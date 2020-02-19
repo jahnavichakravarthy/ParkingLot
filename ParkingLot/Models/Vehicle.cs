@@ -8,24 +8,27 @@ namespace ParkingLot.Models
     }
     public class TwoWheeler : Vehicle
     {
-        TwoWheeler()
+        public TwoWheeler(string vehicleNumber)
         {
             this.Type = VehicleModel.TwoWheeler;
+            this.VehicleNumber = vehicleNumber;
         }
       
     }
     public class FourWheeler : Vehicle
     {
-        FourWheeler()
+        public FourWheeler(string vehicleNumber)
         {
             this.Type = VehicleModel.FourWheeler;
+            this.VehicleNumber = vehicleNumber;
         }
     }
     public class HeavyVehicle : Vehicle
     {
-        HeavyVehicle()
+        public HeavyVehicle(string vehicleNumber)
         {
             this.Type = VehicleModel.HeavyVehicle;
+            this.VehicleNumber = vehicleNumber;
         }
     }
 }

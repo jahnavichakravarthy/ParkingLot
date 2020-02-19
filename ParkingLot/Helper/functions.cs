@@ -37,7 +37,7 @@ namespace ParkingLot.Helper
                     Display.Print("******************************************");
                     break;
                 }
-                catch (FormatException)
+                catch (System.Exception)
                 {
                     Display.Print("******************************************");
                     Display.Print("Please check the format of input\n ******************************************");
@@ -45,6 +45,28 @@ namespace ParkingLot.Helper
                 }
             }
             return option;
+        }
+        public void Regionalcode(string regionalCode)
+        {
+            Validations validations = new Validations();
+            bool isEmpty = string.IsNullOrEmpty(regionalCode);
+            if (!isEmpty)
+            {
+                var status = validations.IsValidRegionalCode(regionalCode) ? "Regional Code has been updated" : "no Regioal Code";
+                Console.WriteLine($"{status}");
+            }
+            else
+            {
+                Display.Print("no Regioal Code");
+            }
+            Display.Print("******************************************");
+        }
+        public string vehicleNumber(string number, string regionalCode)
+        {
+            Validations validations = new Validations();
+            bool isEmpty = string.IsNullOrEmpty(regionalCode);
+            string vehicleNumber = isEmpty ? (number) : (string.Concat(regionalCode,number));
+            return vehicleNumber;
         }
     }
 }

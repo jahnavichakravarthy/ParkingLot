@@ -1,4 +1,5 @@
 ﻿using System;
+
 using System.Collections.Generic;
 using ParkingLot.Models;
 using System.Linq;
@@ -8,12 +9,12 @@ namespace ParkingLot.Services
     interface IParkingService
     {
         List<Slot> GetAvailableSlots(VehicleModel type);
-        void InitializeSlots(int twoWheeler, int fourWheeler, int heavyVehicles);
-        Ticket Park(int slotId, string vehicleNumber);
+        void InitializeParkingLot(int twoWheeler, int fourWheeler, int heavyVehicles);
+        void Park(int slotId, string vehicleNumber);
         void UnPark(int number);
         List<Slot> GetSlots();
         Slot GetSlot(int Number);
-       bool VehicleNumberAmbiguity(string newVehicleNo);
+       bool CheckSimialarVehicleNo(string newVehicleNo);
     }
     public class ParkingSevice : IParkingService
     {
@@ -27,7 +28,7 @@ namespace ParkingLot.Services
             List<Slot> AvailableSlots = slots.ToList();
             return (AvailableSlots.Count == 0) ? null : AvailableSlots;
         }
-        public void InitializeSlots(int twoWheeler, int fourWheeler, int heavyVehicles)
+        public void InitializeParkingLot(int twoWheeler, int fourWheeler, int heavyVehicles)
         {
             //Intialize slots for various types of vehicles
             CreateSlot(twoWheeler, VehicleModel.TwoWheeler);
@@ -43,15 +44,13 @@ namespace ParkingLot.Services
                 Slots.Add(slot);
             }
         }
-        public Ticket Park(int slotId, string vehicleNumber)
+        public void Park(int slotId, string vehicleNumber)
         { 
             //park a vehicle ,generate a tickeT,change status to "OCCUPIED"
-            TicketService ticketService = new TicketService();
+    
             Slot SelectedSlot = Slots.Find(slot => slot.Id == slotId);
-            Ticket ticket = ticketService.GenerateTicket(slotId, vehicleNumber);
             SelectedSlot.Availability=Status.OCCUPIED;
             SelectedSlot.ParkedVehicle.VehicleNumber = vehicleNumber;
-            return ticket;
         }
         public void UnPark(int number)
         {
@@ -69,7 +68,7 @@ namespace ParkingLot.Services
             Slot SelectedSlot = Slots.Find(slot => slot.Id == Number);
             return SelectedSlot;
         }
-        public bool VehicleNumberAmbiguity(string newVehicleNo)
+        public bool CheckSimialarVehicleNo(string newVehicleNo)
         { 
             try
             {

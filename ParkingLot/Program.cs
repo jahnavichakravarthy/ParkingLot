@@ -3,22 +3,23 @@ using System.Collections.Generic;
 using ParkingLot.Models;
 using ParkingLot.Services;
 using ParkingLot.Helper;
+using System.Linq;
 
 namespace ParkingLot
 {
     public class Program
     {
-        
-        public static void Main(string[] args)
+        public static void Main()
         {
             while (true)
             {
                 Display Display = new Display();
                 Functions functions = new Functions();
                 List<Ticket> tickets = new List<Ticket>();
-                //List<Slot> AvailableSlots = new List<Slot>();
                 IParkingService ParkingServices = new ParkingSevice();
+                ITicketService ticketService = new TicketService();
                 int option;
+                string regionalCode;
                 Display.Print("WELCOME TO ABCD PARKING LOT");
                 Display.Print("******************************************");
                 Display.Print("please enter number of slots for 2 wheeler");
@@ -27,7 +28,20 @@ namespace ParkingLot
                 int fourWheeler = functions.Input();
                 Display.Print("please enter number of slots for heavy vehicle");
                 int heavyVehicle = functions.Input();
-                ParkingServices.InitializeSlots(twoWheeler, fourWheeler, heavyVehicle);
+                Display.Print("do you want to enter the Regional Code\n\t1.yes\n\t2.no");
+                option = functions.Input();
+                switch (option)
+                {
+                    case 1:
+                        Display.Print("please enter a Regional Code:");
+                        regionalCode = Display.Scan();
+                        functions.Regionalcode(regionalCode);
+                        break;
+                    default:
+                        regionalCode = null;
+                        break;
+                }
+                ParkingServices.InitializeParkingLot(twoWheeler, fourWheeler, heavyVehicle);
                 bool Exit = false;
                 do
                 {
@@ -40,8 +54,8 @@ namespace ParkingLot
                             Vehicle vehicle = new Vehicle();
                             Display.Print("Choose the type of vehicle\n\t1.2 wheeler\n\t2.4 wheeler\n\t3.heavy vehicle\n\t");
                             int choice = functions.Input();
-                           vehicle.Type = (VehicleModel)choice;
-                            List<Slot> AvailableSlots = ParkingServices.GetAvailableSlots(vehicle.Type);
+                            var Type = (VehicleModel)choice;
+                            List<Slot> AvailableSlots = ParkingServices.GetAvailableSlots(Type);
                             if (AvailableSlots != null)
                             {
                                 bool validSlot = false;//FOR EXITING THE LOOP
@@ -53,39 +67,56 @@ namespace ParkingLot
                                     }
                                     Display.Print("Please choose a slot number");
                                     int slotNumber = functions.Input();
+                                    Slot SelectedSlot = AvailableSlots.Find(slot => slot.Id == slotNumber);
                                     bool validity = false;
-                                    do
+                                    if (SelectedSlot != null)
                                     {
-                                        Display.Print("Please enter the vehicle number");
-                                        vehicle.VehicleNumber = Display.Scan();
-                                        Validations validation = new Validations();
-                                        if (validation.VehicleNumber(vehicle.VehicleNumber) == true)
+                                        do
                                         {
-                                           bool ambiguity= ParkingServices.VehicleNumberAmbiguity(vehicle.VehicleNumber);
-                                            if (ambiguity == false)
+                                            Display.Print("Please enter the vehicle number");
+                                            string number = Display.Scan();
+                                            var VehicleNumber = functions.vehicleNumber(number, regionalCode);
+                                            switch (choice)
                                             {
-                                                validity = true;
+                                                case 1:
+                                                    vehicle = new TwoWheeler(VehicleNumber);
+                                                    break;
+                                                case 2:
+                                                    vehicle = new FourWheeler(VehicleNumber);
+                                                    break;
+                                                case 3:
+                                                    vehicle = new HeavyVehicle(VehicleNumber);
+                                                    break;
+                                                default:
+                                                    break;
+                                            }
+                                            Validations validation = new Validations();
+                                            if (validation.IsValidVehicleNumber(vehicle.VehicleNumber) == true)
+                                            {
+                                                bool isSame = ParkingServices.CheckSimialarVehicleNo(vehicle.VehicleNumber);
+                                                if (isSame == false)
+                                                {
+                                                    validity = true;
+                                                }
+                                                else
+                                                {
+                                                    Display.Print("The Vehicle numberis already parked in another slot");
+                                                    Display.Print("******************************************");
+                                                }
+                                                //*********there is still a chance that two vehicles can be parked with same number
                                             }
                                             else
                                             {
-                                                Display.Print("The Vehicle numberis already parked in another slot");
+                                                Display.Print("Please check the format of the vehicle number");
+                                                Display.Print("******************************************");
+                                                validity = false;
                                             }
-                                            //*********there is still a chance that two vehicles can be parked with same number
                                         }
-                                        else
-                                        {
-                                            Display.Print("Please check the format of the vehicle number");
-                                            Display.Print("******************************************");
-                                            validity = false;
-                                        }
-                                    }
-                                    while (validity == false);
-                                    Slot SelectedSlot = AvailableSlots.Find(slot => slot.Id == slotNumber);
-                                    SelectedSlot.ParkedVehicle = vehicle;
-                                    if (SelectedSlot != null)
-                                    {
-                                        Ticket ticket = ParkingServices.Park(slotNumber, vehicle.VehicleNumber);
-                                        tickets.Add(ticket);
+                                        while (validity == false);
+                                        SelectedSlot.ParkedVehicle = vehicle;
+                                        Ticket ticket = ticketService.GenerateTicket(slotNumber, vehicle.VehicleNumber);
+                                        ParkingServices.Park(slotNumber, vehicle.VehicleNumber);
+                                        ticketService.UpdateTicketList(ticket);
                                         functions.Parked(SelectedSlot.Id);
                                         Display.Print("******************************************");
                                         Console.WriteLine($"Ticket Id:{ticket.Id}\nVehicle Number:{SelectedSlot.ParkedVehicle.VehicleNumber}\nSlot Number:{SelectedSlot.Id}\nIn-Time:{ticket.InTime}");
@@ -108,14 +139,16 @@ namespace ParkingLot
                         case 2:
                             while (true)
                             {
-                                if (tickets != null && tickets.Count != 0)
+
+                                int ticketCount = ticketService.GetTicketCount();
+                                if (ticketCount != 0)
                                 {
                                     bool validSlot = false;
                                     do
                                     {
                                         Display.Print("Please enter the slot Id");
                                         int Id = functions.Input();
-                                        Ticket SelectedTicket = tickets.Find(ticket => ticket.SlotNumber == Id);
+                                        Ticket SelectedTicket = ticketService.GetTicket(Id);
                                         if (SelectedTicket != null)
                                         {
                                             Slot slot = ParkingServices.GetSlot(SelectedTicket.SlotNumber);
@@ -151,17 +184,17 @@ namespace ParkingLot
                             }
                             break;
                         case 3:
-                             List<Slot> Slots = ParkingServices.GetSlots();
+                            List<Slot> Slots = ParkingServices.GetSlots();
                             foreach (Slot slot in Slots)
                             {
-                                string vehicleNumber = ((slot.ParkedVehicle==null) ? "-----" : slot.ParkedVehicle.VehicleNumber);
+                                string vehicleNumber = ((slot.ParkedVehicle == null) ? "-----" : slot.ParkedVehicle.VehicleNumber);
                                 Console.WriteLine($"slot:{slot.Id}  type:{slot.Type}  status:{Convert.ToString(slot.Availability)} vehiclePArked:{vehicleNumber}");
                             }
                             Display.Print("******************************************");
                             break;
                         case 4:
                             Exit = true;
-                        
+
                             break;
                         default:
                             Display.Print("please select a valid option");
@@ -173,6 +206,6 @@ namespace ParkingLot
                 while (Exit == false);
             }
         }
-       
+
     }
 }
